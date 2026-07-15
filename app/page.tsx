@@ -1,5 +1,5 @@
 'use client';
-
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -69,7 +69,7 @@ export default function IndexingPage() {
         <label>Cari: </label>
         {/* Menambahkan React.ChangeEvent untuk event handler jika ingin dipisah, 
             meskipun secara inline TypeScript biasanya sudah bisa menebak (infer) otomatis */}
-        <input type="text" placeholder="Ketik judul..." value={searchQuery} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)} />
+        <input type="text" placeholder="Ketik judul, kategori atau value ..." value={searchQuery} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)} />
 
         <label> Kategori: </label>
         <select value={selectedCategory} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedCategory(e.target.value)}>
@@ -104,7 +104,9 @@ export default function IndexingPage() {
                 <li key={item.id}>
                   {/* Karena kita sudah memakai interface BankItem, 
                       mengetik 'item.' akan otomatis memunculkan auto-complete: id, title, category, type */}
-                  <strong>{item.title}</strong>
+                  <Link href={`/detail/${item.id}`}>
+                    <strong>{item.title}</strong>
+                  </Link>
                   <br />
                   <small>
                     Kategori: {item.category} | Tipe: {item.type}
