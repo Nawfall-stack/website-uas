@@ -21,6 +21,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const categories: string[] = ['All', 'Bahasa Indonesia', 'Matematika', 'Rekayasa Perangkat Lunak'];
 const types: string[] = ['All', 'Materi', 'Soal'];
 
+const ITEMS_PER_PAGE = 8;
+
 export default function IndexingPage() {
   // 3. Menambahkan Generic Type pada useState
   const [bankData, setBankData] = useState<BankItem[]>([]);
@@ -28,12 +30,15 @@ export default function IndexingPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedType, setSelectedType] = useState<string>('All');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalItems, setTotalItems] = useState<number>(0);
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
 
-      let query = supabase.from('bank_materi').select('*');
+      let query = supabase.from('bank_materi').select('*', { count: 'exact' });
 
       if (selectedCategory !== 'All') {
         query = query.eq('category', selectedCategory);
@@ -46,20 +51,45 @@ export default function IndexingPage() {
       if (searchQuery !== '') {
         query = query.or(`title.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,type.ilike.%${searchQuery}%`);
       }
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
 
-      const { data, error } = await query;
+      query = query.order('id', { ascending: true }).range(from, to);
+
+      const { data, error, count } = await query.returns<BankItem[]>();
 
       if (error) {
         console.error(error.message);
       } else {
-        setBankData(data as BankItem[]);
+        setBankData(data ?? []);
+
+        // Simpan jumlah seluruh data
+        setTotalItems(count ?? 0);
+
+        // Hitung jumlah halaman
+        setTotalPages(Math.ceil((count ?? 0) / ITEMS_PER_PAGE));
       }
 
       setIsLoading(false);
     }
 
     loadData();
-  }, [searchQuery, selectedCategory, selectedType]);
+  }, [searchQuery, selectedCategory, selectedType, currentPage]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCategory(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedType(e.target.value);
+    setCurrentPage(1);
+  };
 
   return (
     <div>
@@ -69,10 +99,10 @@ export default function IndexingPage() {
         <label>Cari: </label>
         {/* Menambahkan React.ChangeEvent untuk event handler jika ingin dipisah, 
             meskipun secara inline TypeScript biasanya sudah bisa menebak (infer) otomatis */}
-        <input type="text" placeholder="Ketik judul, kategori atau value ..." value={searchQuery} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)} />
+        <input type="text" placeholder="Ketik judul, kategori atau value ..." value={searchQuery} onChange={handleSearchChange} />
 
         <label> Kategori: </label>
-        <select value={selectedCategory} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedCategory(e.target.value)}>
+        <select value={selectedCategory} onChange={handleCategoryChange}>
           {categories.map((cat) => (
             <option key={cat} value={cat}>
               {cat}
@@ -81,7 +111,7 @@ export default function IndexingPage() {
         </select>
 
         <label> Tipe: </label>
-        <select value={selectedType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedType(e.target.value)}>
+        <select value={selectedType} onChange={handleTypeChange}>
           {types.map((type) => (
             <option key={type} value={type}>
               {type}
@@ -93,7 +123,9 @@ export default function IndexingPage() {
       <hr />
 
       <div>
-        <h2>Hasil Pencarian: {bankData.length} item</h2>
+        <h2>
+          Hasil Pencarian: {bankData.length} dari {totalItems} item
+        </h2>
 
         {isLoading ? (
           <p>Memuat data dari database...</p>
@@ -119,6 +151,21 @@ export default function IndexingPage() {
           </ul>
         )}
       </div>
+      {totalPages > 1 &&  (
+        <div style={{ marginTop: '20px' }}>
+          <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
+            ← Sebelumnya
+          </button>
+
+          <span style={{ margin: '0 15px' }}>
+            Halaman {currentPage} dari {totalPages}
+          </span>
+
+          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>
+            Selanjutnya →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
