@@ -18,13 +18,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const categories: string[] = ['All', 'Bahasa Indonesia', 'Matematika', 'Rekayasa Perangkat Lunak'];
+// const categories: string[] = ['All', 'Bahasa Indonesia', 'Matematika', 'Rekayasa Perangkat Lunak'];
 const types: string[] = ['All', 'Materi', 'Soal'];
 
 const ITEMS_PER_PAGE = 10;
 
 export default function IndexingPage() {
   // 3. Menambahkan Generic Type pada useState
+  const [categories, setCategories] = useState<string[]>(['All']);
   const [bankData, setBankData] = useState<BankItem[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -33,6 +34,33 @@ export default function IndexingPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(0);
+
+useEffect(() => {
+  async function loadCategories() {
+    const { data, error } = await supabase
+      .from('bank_materi')
+      .select('category');
+
+    if (error) {
+      console.error(error.message);
+      return;
+    }
+
+    // Hilangkan duplikat
+    const uniqueCategories = [
+      'All',
+      ...new Set(
+        (data ?? [])
+          .map(item => item.category)
+          .filter(Boolean)
+      )
+    ];
+
+    setCategories(uniqueCategories);
+  }
+
+  loadCategories();
+}, []);
 
   useEffect(() => {
     async function loadData() {
@@ -54,7 +82,7 @@ export default function IndexingPage() {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      query = query.order('id', { ascending: true }).range(from, to);
+      query = query.order('created_at', { ascending: false }).range(from, to);
 
       const { data, error, count } = await query.returns<BankItem[]>();
 
