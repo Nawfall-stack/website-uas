@@ -151,7 +151,7 @@ export default function IndexingPage() {
           </ul>
         )}
       </div>
-      {totalPages > 1 &&  (
+      {totalPages >= 1 &&  (
         <div style={{ marginTop: '20px' }}>
           <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
             ← Sebelumnya
