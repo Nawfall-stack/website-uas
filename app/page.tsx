@@ -21,7 +21,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const categories: string[] = ['All', 'Bahasa Indonesia', 'Matematika', 'Rekayasa Perangkat Lunak'];
 const types: string[] = ['All', 'Materi', 'Soal'];
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 10;
 
 export default function IndexingPage() {
   // 3. Menambahkan Generic Type pada useState
