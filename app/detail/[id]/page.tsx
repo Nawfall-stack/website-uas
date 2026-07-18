@@ -8,8 +8,33 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 2. Definisi Tipe Data
+type Block =
+  | {
+      type: "heading";
+      text: string;
+    }
+  | {
+      type: "paragraph";
+      text: string;
+    }
+  | {
+      type: "list";
+      items: string[];
+    }
+  | {
+      type: "quote";
+      text: string;
+      author?: string;
+    };
+
+interface Section{
+  title?: string;
+  blocks : Block[];
+}
+
+
 interface MateriContent {
-  sections: { heading: string; body: string }[];
+  sections : Section[];
 }
 
 interface SoalContent {
@@ -26,6 +51,12 @@ interface BankItem {
   type: string;
   content: MateriContent | SoalContent;
 }
+
+const isArabicText = (text: string): boolean => {
+  if (!text) return false;
+  // Regex untuk mendeteksi blok karakter Arabic
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+};
 
 // 3. Komponen Server
 // Next.js otomatis menyuntikkan (inject) nilai URL ke dalam 'params'
@@ -48,7 +79,7 @@ export default async function DetailPage({ params }: { params: Promise<{ id: str
       <hr />
 
       {/* Bagian Header Detail */}
-      <h1>{item.title}</h1>
+      <h1 dir={isArabicText(item.title) ? 'rtl' : 'ltr'}>{item.title}</h1>
       <ul>
         <li>
           <strong>Kategori:</strong> {item.category}
@@ -71,15 +102,69 @@ export default async function DetailPage({ params }: { params: Promise<{ id: str
 }
 
 function RenderMateri({ content }: { content: MateriContent }) {
-  if (!content || !content.sections) return <p>Format JSON materi tidak valid.</p>;
+  if (!content?.sections) {
+    return <p>Format JSON tidak valid.</p>;
+  }
+
+  const contentString = content.sections
+    .flatMap((section) =>
+      section.blocks.map((block) => {
+        switch (block.type) {
+          case "heading":
+          case "paragraph":
+          case "quote":
+            return block.text;
+
+          case "list":
+            return block.items.join(" ");
+
+          default:
+            return "";
+        }
+      })
+    )
+    .join(" ");
+
+  const isArabic = isArabicText(contentString);
 
   return (
-    <div>
-      {content.sections.map((sec, index) => (
-        <div key={index}>
-          <h2>{sec.heading}</h2>
-          <p>{sec.body}</p>
-        </div>
+    <div dir={isArabic ? "rtl" : "ltr"} lang={isArabic ? "ar" : "id"}>
+      {content.sections.map((section, sectionIndex) => (
+        <section key={sectionIndex}>
+          {section.title && <h2>{section.title}</h2>}
+
+          {section.blocks.map((block, index) => {
+            switch (block.type) {
+              case "heading":
+                return <h3 key={index}>{block.text}</h3>;
+
+              case "paragraph":
+                return <p key={index}>{block.text}</p>;
+
+              case "list":
+                return (
+                  <ul key={index}>
+                    {block.items.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                );
+
+              case "quote":
+                return (
+                  <blockquote key={index}>
+                    <p>{block.text}</p>
+                    {block.author && (
+                      <footer>— {block.author}</footer>
+                    )}
+                  </blockquote>
+                );
+
+              default:
+                return null;
+            }
+          })}
+        </section>
       ))}
     </div>
   );
@@ -88,8 +173,12 @@ function RenderMateri({ content }: { content: MateriContent }) {
 function RenderSoal({ content }: { content: SoalContent }) {
   if (!content || !content.question) return <p>Format JSON soal tidak valid.</p>;
 
+const contentString = `${content.question} ${content.options?.join(' ')} ${content.explanation}`;
+  const isArabic = isArabicText(contentString);
+
   return (
-    <div>
+    <div dir={isArabic ? 'rtl' : 'ltr'} 
+      lang={isArabic ? 'ar' : 'id'}>
       <h2>{content.question}</h2>
 
       <ul>
