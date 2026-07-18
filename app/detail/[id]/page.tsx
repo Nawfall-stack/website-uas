@@ -27,8 +27,14 @@ type Block =
       author?: string;
     };
 
+interface Section{
+  title?: string;
+  blocks : Block[];
+}
+
+
 interface MateriContent {
-  blocks: Block[];
+  sections : Section[];
 }
 
 interface SoalContent {
@@ -96,55 +102,70 @@ export default async function DetailPage({ params }: { params: Promise<{ id: str
 }
 
 function RenderMateri({ content }: { content: MateriContent }) {
-  if (!content?.blocks) return <p>Format JSON tidak valid.</p>;
-  
+  if (!content?.sections) {
+    return <p>Format JSON tidak valid.</p>;
+  }
 
-  const contentString = content.blocks
-    .map((block) => {
-      switch (block.type) {
-        case "heading":
-        case "paragraph":
-        case "quote":
-          return block.text;
-        case "list":
-          return block.items.join(" ");
-      }
-    })
+  const contentString = content.sections
+    .flatMap((section) =>
+      section.blocks.map((block) => {
+        switch (block.type) {
+          case "heading":
+          case "paragraph":
+          case "quote":
+            return block.text;
+
+          case "list":
+            return block.items.join(" ");
+
+          default:
+            return "";
+        }
+      })
+    )
     .join(" ");
 
   const isArabic = isArabicText(contentString);
 
   return (
     <div dir={isArabic ? "rtl" : "ltr"} lang={isArabic ? "ar" : "id"}>
-      {content.blocks.map((block, index) => {
-        switch (block.type) {
-          case "heading":
-            return <h2 key={index}>{block.text}</h2>;
+      {content.sections.map((section, sectionIndex) => (
+        <section key={sectionIndex}>
+          {section.title && <h2>{section.title}</h2>}
 
-          case "paragraph":
-            return <p key={index}>{block.text}</p>;
+          {section.blocks.map((block, index) => {
+            switch (block.type) {
+              case "heading":
+                return <h3 key={index}>{block.text}</h3>;
 
-          case "list":
-            return (
-              <ul key={index}>
-                {block.items.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            );
+              case "paragraph":
+                return <p key={index}>{block.text}</p>;
 
-          case "quote":
-            return (
-              <blockquote key={index}>
-                <p>{block.text}</p>
-                {block.author && <footer>— {block.author}</footer>}
-              </blockquote>
-            );
+              case "list":
+                return (
+                  <ul key={index}>
+                    {block.items.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                );
 
-          default:
-            return null;
-        }
-      })}
+              case "quote":
+                return (
+                  <blockquote key={index}>
+                    <p>{block.text}</p>
+                    {block.author && (
+                      <footer>— {block.author}</footer>
+                    )}
+                  </blockquote>
+                );
+
+              default:
+                return null;
+            }
+          })}
+        </section>
+      ))}
     </div>
   );
 }
